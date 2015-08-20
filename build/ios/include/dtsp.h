@@ -120,4 +120,3 @@ extern "C" {
 #endif
 
 #endif	/* DTSP_H */
-

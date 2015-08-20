@@ -83,4 +83,3 @@ extern "C" {
 #endif
 
 #endif	/* MD5_H */
-

@@ -56,4 +56,3 @@ extern "C" {
 #endif
 
 #endif	/* CRC32_H */
-

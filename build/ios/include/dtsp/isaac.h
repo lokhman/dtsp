@@ -77,4 +77,3 @@ extern "C" {
 #endif
 
 #endif	/* ISAAC_H */
-

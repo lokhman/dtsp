@@ -115,6 +115,15 @@ extern "C" {
      */
     ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
+    /**
+     * Free memory used by DTSP context structure.
+     *
+     * @param ctx   DTSP context
+     *
+     * @return void
+     */
+    void dtsp_free(dtsp_ctx_t *ctx);
+
 #ifdef	__cplusplus
 }
 #endif

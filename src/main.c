@@ -91,8 +91,8 @@ int main(int argc, char **argv) {
     dec_len2 = dtsp_decrypt_bytes(&ctx_srv, dec2, enc2, enc_len2);
     printf("SERVER: Decrypt -> %d bytes\n", dec_len2);
 
-    dtsp_free(&ctx_srv);
     dtsp_free(&ctx_cli);
+    dtsp_free(&ctx_srv);
 
     return EXIT_SUCCESS;
 }

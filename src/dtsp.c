@@ -227,7 +227,7 @@ ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
         return DTSP_STATUS_BADHEADER;
 
     // UDID [16 bytes]
-    if (tfind((void *) &in[5], (void *) &ctx->cache, dtsp_udid_compare) != 0)
+    if (tfind(&in[5], (void *) &ctx->cache, dtsp_udid_compare) != 0)
         return DTSP_STATUS_DUPLICATE;
 
     // sync value [1 byte]
@@ -247,7 +247,7 @@ ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
     // UDID -> cache
     udid = (uint8_t *) malloc(16);
     memcpy(udid, (uint8_t *) &in[5], 16);
-    if (tsearch((void *) udid, (void *) &ctx->cache, dtsp_udid_compare) == 0)
+    if (tsearch(udid, (void *) &ctx->cache, dtsp_udid_compare) == 0)
         return DTSP_STATUS_FULL;
 
     // AES [n+16? bytes]

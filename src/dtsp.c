@@ -212,7 +212,7 @@ ssize_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
  * @return (N-[DTSP_PADDING]) or dtsp_status_t
  */
 ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
-    uint8_t *key, mac[16];
+    uint8_t *key, *udid, mac[16];
     isaac_ctx_t *key_ctx;
     aes_ctx_t aes_ctx;
 
@@ -245,7 +245,9 @@ ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
         return DTSP_STATUS_BADMAC;
 
     // UDID -> cache
-    if (tsearch((void *) &in[5], (void *) &ctx->cache, dtsp_udid_compare) == 0)
+    udid = (uint8_t *) malloc(16);
+    memcpy(udid, (uint8_t *) &in[5], 16);
+    if (tsearch((void *) udid, (void *) &ctx->cache, dtsp_udid_compare) == 0)
         return DTSP_STATUS_FULL;
 
     // AES [n+16? bytes]
@@ -255,4 +257,15 @@ ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
 
     // cipher from (0 + 4+1+16) to (n - 4+1+16+16)
     return aes_decrypt(&aes_ctx, out, in + 21, n - 37);
+}
+
+/**
+ * Free memory used by DTSP context structure.
+ *
+ * @param ctx   DTSP context
+ *
+ * @return void
+ */
+void dtsp_free(dtsp_ctx_t *ctx) {
+    tdestroy(ctx->cache, free);
 }

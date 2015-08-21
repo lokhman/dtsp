@@ -160,6 +160,73 @@ void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid) 
 }
 
 /**
+ * Start DTSP stream encryption with header.
+ *
+ * @param ctx   DTSP context
+ * @param out   Output buffer
+ *
+ * @return void
+ */
+void dtsp_encrypt_stream_start(dtsp_ctx_t *ctx, uint8_t out[21]) {
+    uint8_t iv[16];
+
+    // header [BE 4 bytes]
+    UINT32_PUT(out, DTSP_HEADER);
+    out += 4;
+
+    // sync value [1 byte]
+    ctx->st_sync = dtsp_update(ctx);
+    memcpy(out, &ctx->st_sync, 1);
+    out += 1;
+
+    // UDID [16 bytes]
+    dtsp_udid(ctx, ctx->st_udid);
+    memcpy(out, ctx->st_udid, 16);
+
+    // AES initialise
+    dtsp_iv(&ctx->key_ctx, iv, ctx->st_sync);
+    aes_init(&ctx->st_aes, DTSP_AES, ctx->key, iv);
+    aes_encrypt_stream_start(&ctx->st_aes);
+
+    ctx->st_crc = crc32(out - 5, 21);
+    ctx->st_len = 21;
+}
+
+/**
+ * Continue DTSP stream encryption with next 16-byte chunk.
+ *
+ * @param ctx   DTSP context
+ * @param out   Output buffer
+ * @param in    Input buffer
+ *
+ * @return void
+ */
+void dtsp_encrypt_stream_continue(dtsp_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]) {
+    aes_encrypt_stream_continue(&ctx->st_aes, out, in);
+    ctx->st_crc = crc32_update(ctx->st_crc, out, 16);
+}
+
+/**
+ * Finish DTSP stream encryption with MAC.
+ *
+ * @param ctx   DTSP context
+ * @param out   Output buffer
+ * @param in    Last input buffer
+ * @param n     Last input length (<=16)
+ *
+ * @return (N+[DTSP_PADDING]+16)
+ */
+size_t dtsp_encrypt_stream_finish(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, uint8_t n) {
+    ctx->st_len += aes_encrypt_stream_finish(&ctx->st_aes, out, in, n);
+    ctx->st_crc = crc32_update(ctx->st_crc, out, 16);
+
+    // MAC [16 bytes]
+    dtsp_mac(&ctx->key_ctx, out + 16, ctx->st_udid, ctx->st_sync, ctx->st_crc);
+
+    return ctx->st_len + 16;
+}
+
+/**
  * DTSP encryption routine.
  *
  *  4    1 16               N+(16)                 16
@@ -170,35 +237,22 @@ void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid) 
  * @param in    Input buffer
  * @param n     Input length
  *
- * @return (N+[DTSP_PADDING]) or dtsp_status_t
+ * @return (N+[DTSP_PADDING])
  */
 ssize_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
-    uint8_t sync, *ptr = out;
-    aes_ctx_t aes_ctx;
+    size_t i;
 
-    // header [BE 4 bytes]
-    UINT32_PUT(out, DTSP_HEADER);
-    out += 4;
+    dtsp_encrypt_stream_start(ctx, out);
+    out += 21;
 
-    // sync value [1 byte]
-    sync = dtsp_update(ctx);
-    memcpy(out, &sync, 1);
-    out += 1;
+    for (i = n / 16; i > 0; i--) {
+        dtsp_encrypt_stream_continue(ctx, out, in);
 
-    // UDID [16 bytes]
-    dtsp_udid(ctx, out);
-    out += 16;
+        out += 16;
+        in += 16;
+    }
 
-    // AES [n+16? bytes]
-    aes_ctx.bits = DTSP_AES;
-    dtsp_iv(&ctx->key_ctx, aes_ctx.iv, sync);
-    memcpy(aes_ctx.key, ctx->key, AES_KEY_SIZE(DTSP_AES));
-    out += aes_encrypt(&aes_ctx, out, in, n);
-
-    // MAC [16 bytes]
-    dtsp_mac(&ctx->key_ctx, out, ptr + 5, sync, crc32(ptr, out - ptr));
-
-    return out + 16 - ptr;
+    return dtsp_encrypt_stream_finish(ctx, out, in, n);
 }
 
 /**

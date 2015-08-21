@@ -46,10 +46,11 @@
 #define DTSP_INTERVAL   15U             /* INTERVAL > TIMEOUT <= 60! */
 #define DTSP_AES        AES_256
 
-#define dtsp_encrypt(ctx, out, in)  \
-    dtsp_encrypt_bytes(ctx, out, (in)->buf, (in)->n)
-#define dtsp_decrypt(ctx, out, in)  \
-    dtsp_decrypt_bytes(ctx, out, (in)->buf, (in)->n)
+/** Macro for encrypting dtsp_buf_t structure as input */
+#define dtsp_encrypt(ctx, out, in) dtsp_encrypt_bytes(ctx, out, (in)->buf, (in)->n)
+
+/** Macro for decrypting dtsp_buf_t structure as input */
+#define dtsp_decrypt(ctx, out, in) dtsp_decrypt_bytes(ctx, out, (in)->buf, (in)->n)
 
 #ifdef	__cplusplus
 extern "C" {
@@ -70,6 +71,13 @@ extern "C" {
         isaac_ctx_t  key_ctx;
         isaac_ctx_t udid_ctx;
         uint8_t *cache;
+
+        /* stream variables */
+        uint8_t st_sync;
+        uint8_t st_udid[16];
+        aes_ctx_t st_aes;
+        uint32_t st_crc;
+        size_t st_len;
     } dtsp_ctx_t;
 
     typedef enum {
@@ -90,6 +98,39 @@ extern "C" {
      * @return void
      */
     void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid);
+
+    /**
+     * Start DTSP stream encryption with header.
+     *
+     * @param ctx   DTSP context
+     * @param out   Output buffer
+     *
+     * @return void
+     */
+    void dtsp_encrypt_stream_start(dtsp_ctx_t *ctx, uint8_t out[21]);
+
+    /**
+     * Continue DTSP stream encryption with next 16-byte chunk.
+     *
+     * @param ctx   DTSP context
+     * @param out   Output buffer
+     * @param in    Input buffer
+     *
+     * @return void
+     */
+    void dtsp_encrypt_stream_continue(dtsp_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]);
+
+    /**
+     * Finish DTSP stream encryption with MAC.
+     *
+     * @param ctx   DTSP context
+     * @param out   Output buffer
+     * @param in    Last input buffer
+     * @param n     Last input length (<=16)
+     *
+     * @return (N+[DTSP_PADDING]+16)
+     */
+    size_t dtsp_encrypt_stream_finish(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, uint8_t n);
 
     /**
      * DTSP encryption routine.

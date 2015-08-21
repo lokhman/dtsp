@@ -140,7 +140,6 @@ extern "C" {
      */
     void aes_decrypt_stream_continue(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]);
 
-
     /**
      * Finish AES stream decryption truncating PKCS7 padding.
      *

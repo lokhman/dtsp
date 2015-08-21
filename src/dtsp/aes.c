@@ -1068,6 +1068,84 @@ static void aes_decrypt_block(const uint32_t *rk, int rounds, uint8_t out[16], c
 }
 
 /**
+ * Initialise AES context structure.
+ *
+ * @param ctx   AES context
+ * @param bits  Bit size (AES-128, AES-192, AES-256)
+ * @param key   Encryption/decryption key
+ * @param iv    Initialisation vector
+ *
+ * @return void
+ */
+void aes_init(aes_ctx_t *ctx, aes_bits_t bits, const uint8_t *key, const uint8_t iv[16]) {
+    memset(ctx, 0, sizeof(aes_ctx_t));
+
+    memcpy(ctx->key, key, AES_KEY_SIZE(bits));
+    memcpy(ctx->iv, iv, 16);
+    ctx->bits = bits;
+}
+
+/**
+ * Start AES stream encryption.
+ *
+ * @param ctx   AES context
+ *
+ * @return void
+ */
+void aes_encrypt_stream_start(aes_ctx_t *ctx) {
+    ctx->st_rounds = aes_encrypt_key(ctx->st_rk, ctx->key, ctx->bits);
+    memcpy(ctx->st_iv, ctx->iv, 16);
+    ctx->st_len = 0;
+}
+
+/**
+ * Continue AES stream encryption with next 16-byte chunk.
+ *
+ * @param ctx   AES context
+ * @param out   Output buffer
+ * @param in    Input buffer
+ *
+ * @return void
+ */
+void aes_encrypt_stream_continue(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]) {
+    uint8_t block[16];
+
+    ((uint32_t *) block)[0] = ((uint32_t *) in)[0] ^ ((uint32_t *) ctx->st_iv)[0];
+    ((uint32_t *) block)[1] = ((uint32_t *) in)[1] ^ ((uint32_t *) ctx->st_iv)[1];
+    ((uint32_t *) block)[2] = ((uint32_t *) in)[2] ^ ((uint32_t *) ctx->st_iv)[2];
+    ((uint32_t *) block)[3] = ((uint32_t *) in)[3] ^ ((uint32_t *) ctx->st_iv)[3];
+
+    aes_encrypt_block(ctx->st_rk, ctx->st_rounds, out, block);
+    memcpy(ctx->st_iv, out, 16);
+    ctx->st_len += 16;
+}
+
+/**
+ * Finish AES stream encryption with PKCS7 padding.
+ *
+ * @param ctx   AES context
+ * @param out   Output buffer
+ * @param in    Last input buffer
+ * @param n     Last input length (<=16)
+ *
+ * @return (N+padding)
+ */
+size_t aes_encrypt_stream_finish(aes_ctx_t *ctx, uint8_t out[16], const uint8_t *in, uint8_t n) {
+    uint8_t block[16], pad;
+
+    n %= 16;
+    pad = 16 - n;
+
+    memcpy(block, in, n);
+    memset(block + n, pad, pad);
+
+    aes_encrypt_stream_continue(ctx, out, block);
+
+    return ctx->st_len;
+}
+
+
+/**
  * AES encryption with PKCS7 padding.
  *
  * @param ctx   AES context
@@ -1078,33 +1156,67 @@ static void aes_decrypt_block(const uint32_t *rk, int rounds, uint8_t out[16], c
  * @return (N+padding)
  */
 size_t aes_encrypt(aes_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
-    uint8_t block[16], *iv = ctx->iv, rounds, rem, pad;
-    uint32_t rk[60 /* 4*(MAX_ROUNDS+1) */], i;
+    size_t i;
 
-    rounds = aes_encrypt_key(rk, ctx->key, ctx->bits);
+    aes_encrypt_stream_start(ctx);
 
-    for (i = (uint32_t) (n / 16); i > 0; i--) {
-        ((uint32_t *) block)[0] = ((uint32_t *) in)[0] ^ ((uint32_t *) iv)[0];
-        ((uint32_t *) block)[1] = ((uint32_t *) in)[1] ^ ((uint32_t *) iv)[1];
-        ((uint32_t *) block)[2] = ((uint32_t *) in)[2] ^ ((uint32_t *) iv)[2];
-        ((uint32_t *) block)[3] = ((uint32_t *) in)[3] ^ ((uint32_t *) iv)[3];
+    for (i = n / 16; i > 0; i--) {
+        aes_encrypt_stream_continue(ctx, out, in);
 
-        aes_encrypt_block(rk, rounds, out, block);
-
-        iv = out;
-        in += 16;
         out += 16;
+        in += 16;
     }
 
-    for (i = 0, rem = n % 16; i < rem; i++)
-        block[i] = in[i] ^ iv[i];
+    return aes_encrypt_stream_finish(ctx, out, in, n);
+}
 
-    for (i = rem, pad = 16 - rem; i < 16; i++)
-        block[i] = ((uint8_t) pad) ^ iv[i];
+/**
+ * Start AES stream decryption.
+ *
+ * @param ctx   AES context
+ *
+ * @return void
+ */
+void aes_decrypt_stream_start(aes_ctx_t *ctx) {
+    ctx->st_rounds = aes_decrypt_key(ctx->st_rk, ctx->key, ctx->bits);
+    memcpy(ctx->st_iv, ctx->iv, 16);
+    ctx->st_len = 0;
+}
 
-    aes_encrypt_block(rk, rounds, out, block);
+/**
+ * Continue AES stream decryption with next 16-byte chunk.
+ *
+ * @param ctx   AES context
+ * @param out   Output buffer
+ * @param in    Input buffer
+ *
+ * @return void
+ */
+void aes_decrypt_stream_continue(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]) {
+    aes_decrypt_block(ctx->st_rk, ctx->st_rounds, out, in);
 
-    return n + pad;
+    ((uint32_t *) out)[0] ^= ((uint32_t *) ctx->st_iv)[0];
+    ((uint32_t *) out)[1] ^= ((uint32_t *) ctx->st_iv)[1];
+    ((uint32_t *) out)[2] ^= ((uint32_t *) ctx->st_iv)[2];
+    ((uint32_t *) out)[3] ^= ((uint32_t *) ctx->st_iv)[3];
+
+    memcpy(ctx->st_iv, in, 16);
+    ctx->st_len += 16;
+}
+
+/**
+ * Finish AES stream decryption truncating PKCS7 padding.
+ *
+ * @param ctx   AES context
+ * @param out   Output buffer
+ * @param in    Last input buffer
+ *
+ * @return (N-padding)
+ */
+size_t aes_decrypt_stream_finish(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]) {
+    aes_decrypt_stream_continue(ctx, out, in);
+
+    return ctx->st_len - out[15];
 }
 
 /**
@@ -1118,24 +1230,16 @@ size_t aes_encrypt(aes_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
  * @return (N-padding)
  */
 size_t aes_decrypt(aes_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
-    uint32_t rk[60 /* 4*(MAX_ROUNDS+1) */], i;
-    uint8_t block[16], *iv = ctx->iv, rounds;
+    size_t i;
 
-    rounds = aes_decrypt_key(rk, ctx->key, ctx->bits);
+    aes_decrypt_stream_start(ctx);
 
-    for (i = (uint32_t) (n / 16); i > 0; i--) {
-        aes_decrypt_block(rk, rounds, block, in);
+    for (i = n / 16; i > 1; i--) {
+        aes_decrypt_stream_continue(ctx, out, in);
 
-        ((uint32_t *) out)[0] = ((uint32_t *) block)[0] ^ ((uint32_t *) iv)[0];
-        ((uint32_t *) out)[1] = ((uint32_t *) block)[1] ^ ((uint32_t *) iv)[1];
-        ((uint32_t *) out)[2] = ((uint32_t *) block)[2] ^ ((uint32_t *) iv)[2];
-        ((uint32_t *) out)[3] = ((uint32_t *) block)[3] ^ ((uint32_t *) iv)[3];
-
-        memcpy(iv, in, 16);
-
-        in += 16;
         out += 16;
+        in += 16;
     }
 
-    return n - (--out)[0];
+    return aes_decrypt_stream_finish(ctx, out, in);
 }

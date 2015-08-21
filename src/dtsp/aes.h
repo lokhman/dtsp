@@ -40,7 +40,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#define AES_IV_SIZE 16U
 #define AES_KEY_SIZE(b) ((b) / 8)
 
 #ifdef	__cplusplus
@@ -55,9 +54,59 @@ extern "C" {
 
     typedef struct {
         aes_bits_t bits;
-        uint8_t iv[AES_IV_SIZE];
-        uint8_t key[AES_KEY_SIZE(AES_256)];
+        uint8_t iv[16];
+        uint8_t key[32];
+
+        /* stream encrypting */
+        uint32_t st_rk[60];
+        uint8_t st_rounds;
+        uint8_t st_iv[16];
+        size_t st_len;
     } aes_ctx_t;
+
+    /**
+     * Initialise AES context structure.
+     *
+     * @param ctx   AES context
+     * @param bits  Bit size (AES-128, AES-192, AES-256)
+     * @param key   Encryption/decryption key
+     * @param iv    Initialisation vector
+     *
+     * @return void
+     */
+    void aes_init(aes_ctx_t *ctx, aes_bits_t bits, const uint8_t *key, const uint8_t iv[16]);
+
+    /**
+     * Start AES stream encryption.
+     *
+     * @param ctx   AES context
+     *
+     * @return void
+     */
+    void aes_encrypt_stream_start(aes_ctx_t *ctx);
+
+    /**
+     * Finish AES stream encryption with PKCS7 padding.
+     *
+     * @param ctx   AES context
+     * @param out   Output buffer
+     * @param in    Last input buffer
+     * @param n     Last input length (<=16)
+     *
+     * @return (N+padding)
+     */
+    size_t aes_encrypt_stream_finish(aes_ctx_t *ctx, uint8_t out[16], const uint8_t *in, uint8_t n);
+
+    /**
+     * Continue AES stream encryption with next 16-byte chunk.
+     *
+     * @param ctx   AES context
+     * @param out   Output buffer
+     * @param in    Input buffer
+     *
+     * @return void
+     */
+    void aes_encrypt_stream_continue(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]);
 
     /**
      * AES encryption with PKCS7 padding.
@@ -70,6 +119,38 @@ extern "C" {
      * @return (N+padding)
      */
     size_t aes_encrypt(aes_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+
+    /**
+     * Start AES stream decryption.
+     *
+     * @param ctx   AES context
+     *
+     * @return void
+     */
+    void aes_decrypt_stream_start(aes_ctx_t *ctx);
+
+    /**
+     * Continue AES stream decryption with next 16-byte chunk.
+     *
+     * @param ctx   AES context
+     * @param out   Output buffer
+     * @param in    Input buffer
+     *
+     * @return void
+     */
+    void aes_decrypt_stream_continue(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]);
+
+
+    /**
+     * Finish AES stream decryption truncating PKCS7 padding.
+     *
+     * @param ctx   AES context
+     * @param out   Output buffer
+     * @param in    Last input buffer
+     *
+     * @return (N-padding)
+     */
+    size_t aes_decrypt_stream_finish(aes_ctx_t *ctx, uint8_t out[16], const uint8_t in[16]);
 
     /**
      * AES decryption with truncating padding.

@@ -80,15 +80,16 @@ static uint32_t C32TAB[] = {
 };
 
 /**
- * Generate CRC32C checksum.
+ * Generate CRC32C checksum based on initial value.
  *
+ * @param crc32 Initial checksum
  * @param buf   Input buffer
  * @param n     Input length
  *
  * @return 32-bit checksum
  */
-uint32_t crc32(const uint8_t *buf, size_t n) {
-    register uint32_t crc32 = 0xFFFFFFFF;
+uint32_t crc32_update(register uint32_t crc32, const uint8_t *buf, size_t n) {
+    crc32 ^= 0xFFFFFFFF;
 
     while (n--)
         crc32 = C32TAB[(crc32 ^ ((uint8_t) *buf++)) & 0xFF] ^ (crc32 >> 8);

@@ -239,7 +239,7 @@ size_t dtsp_encrypt_stream_finish(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *
  *
  * @return (N+[DTSP_PADDING])
  */
-ssize_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
+size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
     size_t i;
 
     dtsp_encrypt_stream_start(ctx, out);

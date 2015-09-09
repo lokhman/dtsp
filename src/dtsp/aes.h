@@ -57,7 +57,7 @@ extern "C" {
         uint8_t iv[16];
         uint8_t key[32];
 
-        /* stream encrypting */
+        /* stream properties */
         uint32_t st_rk[60];
         uint8_t st_rounds;
         uint8_t st_iv[16];

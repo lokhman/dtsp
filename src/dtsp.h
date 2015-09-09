@@ -72,7 +72,7 @@ extern "C" {
         isaac_ctx_t udid_ctx;
         uint8_t *cache;
 
-        /* stream variables */
+        /* stream properties */
         uint8_t st_sync;
         uint8_t st_udid[16];
         aes_ctx_t st_aes;
@@ -81,6 +81,7 @@ extern "C" {
     } dtsp_ctx_t;
 
     typedef enum {
+        DTSP_STATUS_OK = 0x00,
         DTSP_STATUS_NODATA = -0x0F,
         DTSP_STATUS_BADHEADER,
         DTSP_STATUS_DUPLICATE,
@@ -140,9 +141,9 @@ extern "C" {
      * @param in    Input buffer
      * @param n     Input length
      *
-     * @return (N+[DTSP_PADDING]) or dtsp_status_t
+     * @return (N+[DTSP_PADDING])
      */
-    ssize_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+    size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
     /**
      * DTSP decryption routine.

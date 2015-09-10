@@ -37,19 +37,23 @@
 #include <stdint.h>
 #include <string.h>
 
+/** Macro for generating CRC32C checksum */
+#define crc32(buf, n) crc32_update(0U, buf, n)
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
     /**
-     * Generate CRC32C checksum.
+     * Generate CRC32C checksum based on initial value.
      *
+     * @param crc32 Initial checksum
      * @param buf   Input buffer
      * @param n     Input length
      *
      * @return 32-bit checksum
      */
-    uint32_t crc32(const uint8_t *buf, size_t n);
+    uint32_t crc32_update(register uint32_t crc32, const uint8_t *buf, size_t n);
 
 #ifdef	__cplusplus
 }

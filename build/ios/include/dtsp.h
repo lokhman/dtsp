@@ -46,10 +46,11 @@
 #define DTSP_INTERVAL   15U             /* INTERVAL > TIMEOUT <= 60! */
 #define DTSP_AES        AES_256
 
-#define dtsp_encrypt(ctx, out, in)  \
-    dtsp_encrypt_bytes(ctx, out, (in)->buf, (in)->n)
-#define dtsp_decrypt(ctx, out, in)  \
-    dtsp_decrypt_bytes(ctx, out, (in)->buf, (in)->n)
+/** Macro for encrypting dtsp_buf_t structure as input */
+#define dtsp_encrypt(ctx, out, in) dtsp_encrypt_bytes(ctx, out, (in)->buf, (in)->n)
+
+/** Macro for decrypting dtsp_buf_t structure as input */
+#define dtsp_decrypt(ctx, out, in) dtsp_decrypt_bytes(ctx, out, (in)->buf, (in)->n)
 
 #ifdef	__cplusplus
 extern "C" {
@@ -99,9 +100,9 @@ extern "C" {
      * @param in    Input buffer
      * @param n     Input length
      *
-     * @return (N+[DTSP_PADDING]) or dtsp_status_t
+     * @return (N+[DTSP_PADDING])
      */
-    ssize_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+    size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
     /**
      * DTSP decryption routine.

@@ -266,7 +266,7 @@ size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size
  * @return (N-[DTSP_PADDING]) or dtsp_status_t
  */
 ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
-    uint8_t *key, *udid, mac[16];
+    uint8_t *key, *udid, mac[16], iv[16];
     isaac_ctx_t *key_ctx;
     aes_ctx_t aes_ctx;
 
@@ -305,9 +305,8 @@ ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
         return DTSP_STATUS_FULL;
 
     // AES [n+16? bytes]
-    aes_ctx.bits = DTSP_AES;
-    dtsp_iv(key_ctx, aes_ctx.iv, in[4]);
-    memcpy(aes_ctx.key, key, AES_KEY_SIZE(DTSP_AES));
+    dtsp_iv(key_ctx, iv, in[4]);
+    aes_init(&aes_ctx, DTSP_AES, key, iv);
 
     // cipher from (0 + 4+1+16) to (n - 4+1+16+16)
     return aes_decrypt(&aes_ctx, out, in + 21, n - 37);

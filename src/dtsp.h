@@ -46,24 +46,14 @@
 #define DTSP_INTERVAL   15U             /* INTERVAL > TIMEOUT <= 60! */
 #define DTSP_AES        AES_256
 
-/** Macro for encrypting dtsp_buf_t structure as input */
-#define dtsp_encrypt(ctx, out, in) dtsp_encrypt_bytes(ctx, out, (in)->buf, (in)->n)
-
-/** Macro for decrypting dtsp_buf_t structure as input */
-#define dtsp_decrypt(ctx, out, in) dtsp_decrypt_bytes(ctx, out, (in)->buf, (in)->n)
-
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
     typedef struct {
-        const uint8_t *buf;
-        size_t n;
-    } dtsp_buf_t;
-
-    typedef struct {
         uint32_t time;
-        dtsp_buf_t seed;
+        uint8_t *seed;
+        size_t n_seed;
         uint8_t _key[32];
         uint8_t  key[32];
         uint8_t udid[16];
@@ -85,36 +75,36 @@ extern "C" {
      * Initialise DTSP context structure.
      *
      * @param ctx   DTSP context
-     * @param seed  Strictly defined seed
-     * @param udid  Unique device identifier
+     * @param seed  Strictly defined seed (binary unsafe)
+     * @param udid  Unique device identifier (binary unsafe)
      *
      * @return void
      */
-    void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid);
+    void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid);
 
     /**
      * DTSP encryption routine.
      *
      * @param ctx   DTSP context
      * @param out   Output buffer
-     * @param in    Input buffer
+     * @param in    Input buffer (binary safe)
      * @param n     Input length
      *
      * @return (N+[DTSP_PADDING])
      */
-    size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+    size_t dtsp_encrypt(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
     /**
      * DTSP decryption routine.
      *
      * @param ctx   DTSP context
      * @param out   Output buffer
-     * @param in    Input buffer
+     * @param in    Input buffer (binary safe)
      * @param n     Input length
      *
      * @return (N-[DTSP_PADDING]) or dtsp_status_t
      */
-    ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+    ssize_t dtsp_decrypt(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
     /**
      * Free memory used by DTSP context structure.

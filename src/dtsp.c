@@ -93,13 +93,13 @@ static int dtsp_udid_compare(const void *a, const void *b) {
 static uint8_t dtsp_update(dtsp_ctx_t *ctx) {
     uint32_t t = (uint32_t) time(0), _t /* previous time */;
     uint8_t *ptr, sync = t % DTSP_INTERVAL;
-    size_t n = ctx->seed.n + 4;
+    size_t n = ctx->n_seed + 4;
 
     if (t - sync == ctx->time)
         return sync;
 
     ptr = (uint8_t *) malloc(n);
-    memcpy(ptr + 4, ctx->seed.buf, ctx->seed.n);
+    memcpy(ptr + 4, ctx->seed, ctx->n_seed);
 
     t -= sync;
     _t = t - DTSP_INTERVAL;
@@ -129,14 +129,14 @@ static uint8_t dtsp_update(dtsp_ctx_t *ctx) {
  * Initialise DTSP context structure.
  *
  * @param ctx   DTSP context
- * @param seed  Strictly defined seed
- * @param udid  Unique device identifier
+ * @param seed  Strictly defined seed (binary unsafe)
+ * @param udid  Unique device identifier (binary unsafe)
  *
  * @return void
  */
-void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid) {
+void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid) {
+    size_t n, n_udid;
     uint8_t *ptr;
-    size_t n;
 
     assert(seed != 0);
     assert(udid != 0);
@@ -145,13 +145,16 @@ void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid) 
     memset(ctx, 0, sizeof(dtsp_ctx_t));
 
     // copy seed
-    ctx->seed = *seed;
+    ctx->n_seed = strlen(seed);
+    ctx->seed = malloc(ctx->n_seed);
+    memcpy(ctx->seed, seed, ctx->n_seed);
 
     // generate UDID hash
-    n = udid->n + seed->n;
+    n_udid = strlen(udid);
+    n = n_udid + ctx->n_seed;
     ptr = (uint8_t *) malloc(n);
-    memcpy(ptr, udid->buf, udid->n);
-    memcpy(ptr + udid->n, seed->buf, seed->n);
+    memcpy(ptr, udid, n_udid);
+    memcpy(ptr + n_udid, seed, ctx->n_seed);
     dtsp_hash(ctx->udid, ptr, n);
     free(ptr);
 
@@ -167,12 +170,12 @@ void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid) 
  *
  * @param ctx   DTSP context
  * @param out   Output buffer
- * @param in    Input buffer
+ * @param in    Input buffer (binary safe)
  * @param n     Input length
  *
  * @return (N+[DTSP_PADDING])
  */
-size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
+size_t dtsp_encrypt(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
     uint8_t sync, iv[16], *ptr = out;
     aes_ctx_t aes_ctx;
 
@@ -205,12 +208,12 @@ size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size
  *
  * @param ctx   DTSP context
  * @param out   Output buffer
- * @param in    Input buffer
+ * @param in    Input buffer (binary safe)
  * @param n     Input length
  *
  * @return (N-[DTSP_PADDING]) or dtsp_status_t
  */
-ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
+ssize_t dtsp_decrypt(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n) {
     uint8_t *key, *udid, mac[16], iv[16];
     isaac_ctx_t *key_ctx;
     aes_ctx_t aes_ctx;
@@ -266,4 +269,5 @@ ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, siz
  */
 void dtsp_free(dtsp_ctx_t *ctx) {
     tdestroy(ctx->cache, free);
+    free(ctx->seed);
 }

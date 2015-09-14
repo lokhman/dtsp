@@ -43,27 +43,17 @@
 
 #define DTSP_HEADER     0xFAF0F0E4U     /* KOI8-R BE */
 #define DTSP_PADDING    53U             /* 4+1+16+16+16 */
-#define DTSP_INTERVAL   15U             /* INTERVAL > TIMEOUT <= 60! */
+#define DTSP_TIMEOUT    15U             /* TIMEOUT <= 60! */
 #define DTSP_AES        AES_256
-
-/** Macro for encrypting dtsp_buf_t structure as input */
-#define dtsp_encrypt(ctx, out, in) dtsp_encrypt_bytes(ctx, out, (in)->buf, (in)->n)
-
-/** Macro for decrypting dtsp_buf_t structure as input */
-#define dtsp_decrypt(ctx, out, in) dtsp_decrypt_bytes(ctx, out, (in)->buf, (in)->n)
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
     typedef struct {
-        const uint8_t *buf;
-        size_t n;
-    } dtsp_buf_t;
-
-    typedef struct {
         uint32_t time;
-        dtsp_buf_t seed;
+        uint8_t *seed;
+        size_t n_seed;
         uint8_t _key[32];
         uint8_t  key[32];
         uint8_t udid[16];
@@ -71,6 +61,7 @@ extern "C" {
         isaac_ctx_t  key_ctx;
         isaac_ctx_t udid_ctx;
         uint8_t *cache;
+        int timeout;
     } dtsp_ctx_t;
 
     typedef enum {
@@ -84,37 +75,38 @@ extern "C" {
     /**
      * Initialise DTSP context structure.
      *
-     * @param ctx   DTSP context
-     * @param seed  Strictly defined seed
-     * @param udid  Unique device identifier
+     * @param ctx       DTSP context
+     * @param seed      Strictly defined seed (binary unsafe)
+     * @param udid      Unique device identifier (binary unsafe)
+     * @param timeout   Keys update timeout ((0; 60), defaults to DTSP_TIMEOUT)
      *
      * @return void
      */
-    void dtsp_init(dtsp_ctx_t *ctx, const dtsp_buf_t *seed, const dtsp_buf_t *udid);
+    void dtsp_init(dtsp_ctx_t *ctx, const char *seed, const char *udid, int timeout);
 
     /**
      * DTSP encryption routine.
      *
      * @param ctx   DTSP context
      * @param out   Output buffer
-     * @param in    Input buffer
+     * @param in    Input buffer (binary safe)
      * @param n     Input length
      *
      * @return (N+[DTSP_PADDING])
      */
-    size_t dtsp_encrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+    size_t dtsp_encrypt(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
     /**
      * DTSP decryption routine.
      *
      * @param ctx   DTSP context
      * @param out   Output buffer
-     * @param in    Input buffer
+     * @param in    Input buffer (binary safe)
      * @param n     Input length
      *
      * @return (N-[DTSP_PADDING]) or dtsp_status_t
      */
-    ssize_t dtsp_decrypt_bytes(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
+    ssize_t dtsp_decrypt(dtsp_ctx_t *ctx, uint8_t *out, const uint8_t *in, size_t n);
 
     /**
      * Free memory used by DTSP context structure.

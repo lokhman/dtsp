@@ -35,7 +35,9 @@
 
 int main(int argc, char **argv) {
     dtsp_ctx_t ctx_srv, ctx_cli;
-    int i, enc_len1, enc_len2, dec_len1, dec_len2;
+    size_t enc_len1, enc_len2,
+           dec_len1, dec_len2;
+    int i, timeout;
 
     uint8_t seed[] = "Some Random Token";
 
@@ -52,8 +54,10 @@ int main(int argc, char **argv) {
             "to come by. The best market research currently indicates between "
             "7.5 and 11 million users.";
 
-    dtsp_init(&ctx_srv, seed, udid_srv);
-    dtsp_init(&ctx_cli, seed, udid_cli);
+    timeout = 0;        // defaults to DTSP_TIMEOUT
+
+    dtsp_init(&ctx_srv, seed, udid_srv, timeout);
+    dtsp_init(&ctx_cli, seed, udid_cli, timeout);
 
     uint8_t enc1[sizeof(test1) + DTSP_PADDING],
             enc2[sizeof(test2) + DTSP_PADDING],

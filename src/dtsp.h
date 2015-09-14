@@ -43,7 +43,7 @@
 
 #define DTSP_HEADER     0xFAF0F0E4U     /* KOI8-R BE */
 #define DTSP_PADDING    53U             /* 4+1+16+16+16 */
-#define DTSP_INTERVAL   15U             /* INTERVAL > TIMEOUT <= 60! */
+#define DTSP_TIMEOUT    15U             /* TIMEOUT <= 60! */
 #define DTSP_AES        AES_256
 
 #ifdef	__cplusplus
@@ -60,6 +60,7 @@ extern "C" {
         isaac_ctx_t _key_ctx;
         isaac_ctx_t  key_ctx;
         isaac_ctx_t udid_ctx;
+        uint8_t timeout;
         uint8_t *cache;
     } dtsp_ctx_t;
 
@@ -74,13 +75,14 @@ extern "C" {
     /**
      * Initialise DTSP context structure.
      *
-     * @param ctx   DTSP context
-     * @param seed  Strictly defined seed (binary unsafe)
-     * @param udid  Unique device identifier (binary unsafe)
+     * @param ctx       DTSP context
+     * @param seed      Strictly defined seed (binary unsafe)
+     * @param udid      Unique device identifier (binary unsafe)
+     * @param timeout   Keys update timeout ((0; 60), defaults to DTSP_TIMEOUT)
      *
      * @return void
      */
-    void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid);
+    void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid, uint8_t timeout);
 
     /**
      * DTSP encryption routine.

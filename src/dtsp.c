@@ -92,7 +92,7 @@ static int dtsp_udid_compare(const void *a, const void *b) {
 
 static uint8_t dtsp_update(dtsp_ctx_t *ctx) {
     uint32_t t = (uint32_t) time(0), _t /* previous time */;
-    uint8_t *ptr, sync = t % DTSP_INTERVAL;
+    uint8_t *ptr, sync = t % ctx->timeout;
     size_t n = ctx->n_seed + 4;
 
     if (t - sync == ctx->time)
@@ -102,7 +102,7 @@ static uint8_t dtsp_update(dtsp_ctx_t *ctx) {
     memcpy(ptr + 4, ctx->seed, ctx->n_seed);
 
     t -= sync;
-    _t = t - DTSP_INTERVAL;
+    _t = t - ctx->timeout;
 
     if (_t == ctx->time) {
         memcpy(&ctx->_key_ctx, &ctx->key_ctx, sizeof(isaac_ctx_t));
@@ -128,13 +128,14 @@ static uint8_t dtsp_update(dtsp_ctx_t *ctx) {
 /**
  * Initialise DTSP context structure.
  *
- * @param ctx   DTSP context
- * @param seed  Strictly defined seed (binary unsafe)
- * @param udid  Unique device identifier (binary unsafe)
+ * @param ctx       DTSP context
+ * @param seed      Strictly defined seed (binary unsafe)
+ * @param udid      Unique device identifier (binary unsafe)
+ * @param timeout   Keys update timeout ((0; 60), defaults to DTSP_TIMEOUT))
  *
  * @return void
  */
-void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid) {
+void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid, uint8_t timeout) {
     size_t n, n_udid;
     uint8_t *ptr;
 
@@ -143,6 +144,12 @@ void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid) {
 
     // clear context
     memset(ctx, 0, sizeof(dtsp_ctx_t));
+
+    // set timeout
+    if (timeout > 0 && timeout < 60)
+        ctx->timeout = timeout;
+    else
+        ctx->timeout = DTSP_TIMEOUT;
 
     // copy seed
     ctx->n_seed = strlen(seed);

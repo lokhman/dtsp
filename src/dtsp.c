@@ -135,7 +135,7 @@ static uint8_t dtsp_update(dtsp_ctx_t *ctx) {
  *
  * @return void
  */
-void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid, uint8_t timeout) {
+void dtsp_init(dtsp_ctx_t *ctx, const char *seed, const char *udid, int timeout) {
     size_t n, n_udid;
     uint8_t *ptr;
 

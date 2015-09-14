@@ -60,8 +60,8 @@ extern "C" {
         isaac_ctx_t _key_ctx;
         isaac_ctx_t  key_ctx;
         isaac_ctx_t udid_ctx;
-        uint8_t timeout;
         uint8_t *cache;
+        int timeout;
     } dtsp_ctx_t;
 
     typedef enum {
@@ -82,7 +82,7 @@ extern "C" {
      *
      * @return void
      */
-    void dtsp_init(dtsp_ctx_t *ctx, const uint8_t *seed, const uint8_t *udid, uint8_t timeout);
+    void dtsp_init(dtsp_ctx_t *ctx, const char *seed, const char *udid, int timeout);
 
     /**
      * DTSP encryption routine.

@@ -41,10 +41,11 @@
 #include "dtsp/isaac.h"
 #include "dtsp/tsearch.h"
 
+#define DTSP_VERSION    "1.0"           /* protocol version */
 #define DTSP_HEADER     0xFAF0F0E4U     /* KOI8-R BE */
 #define DTSP_PADDING    53U             /* 4+1+16+16+16 */
 #define DTSP_TIMEOUT    15U             /* TIMEOUT <= 60! */
-#define DTSP_AES        AES_256
+#define DTSP_AES        AES_256         /* use AES-256 */
 
 #ifdef	__cplusplus
 extern "C" {
